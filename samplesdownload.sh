@@ -12,5 +12,6 @@ image_urls=(
 
 for url in "${image_urls[@]}"; do
   file_name=$(basename "$url")
+  echo $file_name
   curl -sSfL -o "samples/$file_name" "$url"
 done
