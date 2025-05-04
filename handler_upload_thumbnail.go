@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -70,7 +72,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	contentType := header.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Error parsing media type", nil)
+		respondWithError(w, http.StatusBadRequest, "Error parsing media type", err)
 		return
 	}
 
@@ -81,11 +83,15 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	// generate file path
 	fileExtension := strings.Split(contentType, "/")[1]
-	fileName := videoIDString + "." + fileExtension
+	buffer := make([]byte, 32)
+	_, err = rand.Read(buffer)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error creating random file name", err)
+	}
+	fileName := base64.RawURLEncoding.EncodeToString(buffer) + "." + fileExtension
 	filepath := filepath.Join(cfg.assetsRoot, fileName)
 
 	// create file on filesystem
-	fmt.Println(filepath)
 	osFile, err := os.Create(filepath)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error creating file", nil)
@@ -95,7 +101,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	// copy data to os file
 	_, err = io.Copy(osFile, file)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error copying data to file", nil)
+		respondWithError(w, http.StatusInternalServerError, "Error copying data to file", err)
 		return
 	}
 
